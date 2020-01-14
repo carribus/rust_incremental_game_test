@@ -1,9 +1,10 @@
 use std::sync::mpsc::{Receiver};
 use std::thread::{self, JoinHandle};
 use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 
 use crate::continuum::timer::{Timer, TimerState};
-use crate::continuum::entities::{Producer, ProductType};
+use crate::continuum::entities::{Producer};
 
 /// Defines the configuration for an instance of `Engine`
 #[derive(Debug, Copy, Clone)]
@@ -18,6 +19,7 @@ struct EngineInner {
     timer: Arc<Mutex<Timer>>,
     timer_handle: Option<JoinHandle<()>>,
     producers: Vec<Box<dyn Producer>>,
+    products: HashMap<String, f64>,
 }
 
 impl EngineInner {
@@ -37,16 +39,23 @@ impl EngineInner {
     /// A tick is expressed as a unit of elapsed time since the last tick and the `elapsed` value
     /// allows each entity to calculate how much progress it has made since the last tick. 
     pub fn process_tick(&mut self, elapsed: u64) {
-        let _ = self.producers
-                    .iter_mut()
-                    .map(|p| {
-                        let q = p.on_tick(elapsed);
-                        if q > 0.0 {
-                            println!("{} {} produced...", q, p.product().name());
-                            // now we need to do something with what was produced...
-                        }
-                    })
-                    .collect::<()>();
+        let i = { self.producers.iter_mut() };
+        for producer in i {
+            let q = producer.on_tick(elapsed);
+            if q > 0.0 {
+                let product_name = producer.product().name().to_string();
+                // println!("{} {} produced...", q, product_name);
+                // now we need to do something with what was produced...
+                let pq = {
+                    match self.products.get(&product_name) {
+                        Some(v) => *v,
+                        None => 0.0,
+                    }
+                };
+                self.products.insert(product_name, pq + q);
+                println!("{:?}", self.products);
+            }  
+        }           
     }
 
     pub fn add_producer(&mut self, producer: Box<dyn Producer>) {
@@ -67,6 +76,7 @@ impl Engine {
                 timer: Arc::new(Mutex::new(Timer::new(config.tick_timeout_ms))),
                 timer_handle: None,
                 producers: Vec::new(),
+                products: HashMap::new(),
             })),
         }
     }
@@ -96,7 +106,7 @@ impl Engine {
                         TimerState::Stopped => break,
                     }
                 }
-                println!("Engine's timer recv thread ending");
+                println!("Engine's time recv thread terminating");
             })
         );
     }
@@ -123,6 +133,9 @@ impl Engine {
         }
     }
 
+    /// Add a producer to the engine.
+    /// Once a producer has been added to the engine and the timer is in a state of `TimerState::Running`,
+    /// the producer will receive calls to its `on_tick()` method for processing
     pub fn add_producer(&mut self, producer: Box<dyn Producer>) {
         self.inner.lock().unwrap().add_producer(producer);
     }

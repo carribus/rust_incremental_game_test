@@ -61,7 +61,6 @@ impl Timer {
 
         self.set_state(TimerState::Stopped);
 
-        println!("About to join");
         match handle {
             Some(h) => match h.join() {
                 Err(e) => println!("JOIN Error: {:?}", e),

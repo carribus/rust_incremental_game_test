@@ -24,9 +24,29 @@ impl ProductType for GoldProduct {
     }
 }
 
+#[derive(Debug, Clone)]
+struct WoodProduct {
+    name: String,
+    production_quantity: f64,
+}
+
+impl ProductType for WoodProduct {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn production_quantity(&self) -> f64 {
+        self.production_quantity
+    }
+
+    fn set_production_quantity(&mut self, quantity: f64) {
+        self.production_quantity = quantity;
+    }
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let mut engine = Engine::new(EngineConfig {
-        tick_timeout_ms: 100,
+        tick_timeout_ms: 50,
     });
 
     let producer = ProducerEntity {
@@ -34,9 +54,20 @@ fn main() -> Result<(), Box<dyn Error>> {
         cost_coefficient: 1.03,
         output: GoldProduct { 
             name: "Gold".to_string(),
-            production_quantity: 1.0, 
+            production_quantity: 0.01, 
         },
         production_time_ms: 1000,
+        time_elapsed: 0,
+    };
+    engine.add_producer(Box::new(producer));
+    let producer = ProducerEntity {
+        base_cost: 1.0,
+        cost_coefficient: 1.04,
+        output: WoodProduct {
+            name: String::from("Wood"),
+            production_quantity: 1.0,
+        },
+        production_time_ms: 500,
         time_elapsed: 0,
     };
     engine.add_producer(Box::new(producer));
