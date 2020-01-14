@@ -1,10 +1,9 @@
-use std::ops::Deref;
 use std::sync::mpsc::{Receiver};
 use std::thread::{self, JoinHandle};
 use std::sync::{Arc, Mutex};
 
 use crate::continuum::timer::{Timer, TimerState};
-use crate::continuum::entities::{Producer};
+use crate::continuum::entities::{Producer, ProductType};
 
 /// Defines the configuration for an instance of `Engine`
 #[derive(Debug, Copy, Clone)]
@@ -22,7 +21,7 @@ struct EngineInner {
 }
 
 impl EngineInner {
-    pub fn start_timer(&self) -> Receiver<u128> {
+    pub fn start_timer(&self) -> Receiver<u64> {
         self.timer.lock().unwrap().start()
     }
 
@@ -37,11 +36,15 @@ impl EngineInner {
     /// This method is called to progress all entities by a tick
     /// A tick is expressed as a unit of elapsed time since the last tick and the `elapsed` value
     /// allows each entity to calculate how much progress it has made since the last tick. 
-    pub fn process_tick(&self, elapsed: u128) {
+    pub fn process_tick(&mut self, elapsed: u64) {
         let _ = self.producers
-                    .iter()
+                    .iter_mut()
                     .map(|p| {
-                        p.on_tick(elapsed);
+                        let q = p.on_tick(elapsed);
+                        if q > 0.0 {
+                            println!("{} {} produced...", q, p.product().name());
+                            // now we need to do something with what was produced...
+                        }
                     })
                     .collect::<()>();
     }
@@ -75,13 +78,13 @@ impl Engine {
         self.inner.lock().unwrap().timer_handle = Some(
             thread::spawn(move || {
                 loop {
-                    let state = local_self.lock().unwrap().timer_state();
+                    let state = { local_self.lock().unwrap().timer_state() };
 
                     match state {
                         TimerState::Running => {
                             match receiver.recv() {
                                 Ok(elapsed) => {
-                                    println!("Tick received {}", elapsed);
+                                    // println!("Tick received {}", elapsed);
                                     local_self.lock().unwrap().process_tick(elapsed);
                                 },
                                 Err(e) => {
@@ -99,13 +102,16 @@ impl Engine {
     }
 
     pub fn stop(&mut self) {
-        let mut inner = self.inner.lock().unwrap();
+        let handle = {
+            let mut inner = self.inner.lock().unwrap();
 
-        if inner.timer_state() == TimerState::Running {
-            inner.stop_timer();
-        }
+            if inner.timer_state() == TimerState::Running {
+                inner.stop_timer();
+            }
+    
+            inner.timer_handle.take()
+        };
 
-        let handle = inner.timer_handle.take();
         match handle {
             Some(h) => {
                 match h.join() {

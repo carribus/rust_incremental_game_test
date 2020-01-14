@@ -25,7 +25,7 @@ impl Timer {
         }
     }
 
-    pub fn start(&mut self) -> Receiver<u128> {
+    pub fn start(&mut self) -> Receiver<u64> {
         let thread_state = self.state.clone();
         let (sender, receiver) = channel();
         let thread_timeout = self.timeout_ms;
@@ -33,17 +33,22 @@ impl Timer {
         self.set_state(TimerState::Running);
 
         self.thread_handle = Some(thread::spawn(move || {
-            while *thread_state.lock().unwrap() == TimerState::Running {
-                let now = SystemTime::now();
+            loop {
+                let state = { *thread_state.lock().unwrap() };
 
-                thread::sleep(Duration::from_millis(thread_timeout));
-                match sender.send(now.elapsed().unwrap().as_millis()) {
-                    Ok(_) => {
-                    },
-                    Err(e) => {
-                        println!("Send ERROR: {}", e);
-                        *thread_state.lock().unwrap() = TimerState::Stopped;
+                if state == TimerState::Running {
+                    let now = SystemTime::now();
+
+                    thread::sleep(Duration::from_millis(thread_timeout));
+                    match sender.send(now.elapsed().unwrap().as_millis() as u64) {
+                        Ok(_) => {},
+                        Err(e) => {
+                            println!("Send ERROR: {}", e);
+                            *thread_state.lock().unwrap() = TimerState::Stopped;
+                        }
                     }
+                } else {
+                    break;
                 }
             }
         }));
@@ -56,6 +61,7 @@ impl Timer {
 
         self.set_state(TimerState::Stopped);
 
+        println!("About to join");
         match handle {
             Some(h) => match h.join() {
                 Err(e) => println!("JOIN Error: {:?}", e),

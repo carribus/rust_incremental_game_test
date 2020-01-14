@@ -1,17 +1,26 @@
 mod continuum;
 
 use std::error::Error;
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 use continuum::{ Engine, EngineConfig, ProducerEntity, ProductType };
 
 #[derive(Debug, Clone)]
 struct GoldProduct {
     name: String,
+    production_quantity: f64,
 }
 
 impl ProductType for GoldProduct {
-    fn get_name(&self) -> &str {
+    fn name(&self) -> &str {
         &self.name
+    }
+
+    fn production_quantity(&self) -> f64 {
+        self.production_quantity
+    }
+
+    fn set_production_quantity(&mut self, quantity: f64) {
+        self.production_quantity = quantity;
     }
 }
 
@@ -23,8 +32,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let producer = ProducerEntity {
         base_cost: 1.0,
         cost_coefficient: 1.03,
-        output: GoldProduct { name: "Gold".to_string() },
+        output: GoldProduct { 
+            name: "Gold".to_string(),
+            production_quantity: 1.0, 
+        },
         production_time_ms: 1000,
+        time_elapsed: 0,
     };
     engine.add_producer(Box::new(producer));
 
