@@ -61,6 +61,19 @@ impl EngineInner {
     pub fn add_producer(&mut self, producer: Box<dyn Producer>) {
         self.producers.push(producer);
     }
+
+    pub fn get_producer<'a>(&'a self, name: &'a str) -> Option<&'a Box<dyn Producer>> {
+        let mut result = None;
+
+        for p in self.producers.iter() {
+            if p.product().name() == name {
+                result = Some(p);
+                break;
+            }
+        }
+
+        result
+    }
 }
 
 #[derive(Debug)]
@@ -138,5 +151,11 @@ impl Engine {
     /// the producer will receive calls to its `on_tick()` method for processing
     pub fn add_producer(&mut self, producer: Box<dyn Producer>) {
         self.inner.lock().unwrap().add_producer(producer);
+    }
+
+    pub fn get_producer<'a>(&'a self, name: &'a str) -> Option<& Box<dyn Producer + 'a>> {
+        let inner = self.inner.lock().unwrap();
+        let p = inner.get_producer(name);
+        p
     }
 }
