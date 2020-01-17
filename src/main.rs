@@ -26,8 +26,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             input => {
                 // check if the name of a producer was typed
                 match engine.get_producer(input) {
-                    Some(_producer) => {
+                    Some(producer) => {
                         println!("Found {} producer", input);
+                        let mut producer = producer.lock().unwrap();
+                        let q = producer.production_quantity();
+                        
+                        producer.set_production_quantity(q * 2.0);
+                        
+                        println!("gold production per tick is {}", producer.production_quantity());
                     },
                     None => {
                         println!("No producer called {} found", input);

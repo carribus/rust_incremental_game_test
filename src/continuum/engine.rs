@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 
 use crate::continuum::timer::{Timer, TimerState};
-use crate::continuum::entities::{Producer, ProductType};
+use crate::continuum::entities::{Producer};
 
 /// Defines the configuration for an instance of `Engine`
 #[derive(Debug, Copy, Clone)]
@@ -18,8 +18,7 @@ struct EngineInner {
     config: EngineConfig,
     timer: Arc<Mutex<Timer>>,
     timer_handle: Option<JoinHandle<()>>,
-    producers: Vec<Box<dyn Producer>>,
-    product_types: HashMap<String, ProductType>,
+    producers: Vec<Arc<Mutex<Box<dyn Producer>>>>,
     products: HashMap<String, f64>,
 }
 
@@ -40,11 +39,12 @@ impl EngineInner {
     /// A tick is expressed as a unit of elapsed time since the last tick and the `elapsed` value
     /// allows each entity to calculate how much progress it has made since the last tick. 
     pub fn process_tick(&mut self, elapsed: u64) {
-        let i = { self.producers.iter_mut() };
-        for producer in i {
+        let iter = { self.producers.iter_mut() };
+        for producer in iter {
+            let mut producer = producer.lock().unwrap();
             let q = producer.on_tick(elapsed);
             if q > 0.0 {
-                let product_name = producer.product_type().name().to_string();
+                let product_name = producer.product_type().name.to_string();
                 // println!("{} {} produced...", q, product_name);
                 // now we need to do something with what was produced...
                 let pq = {
@@ -59,27 +59,16 @@ impl EngineInner {
         }           
     }
 
-    pub fn add_product_type(&mut self, product_type: ProductType) {
-        self.product_types.insert(product_type.name.clone(), product_type);
-    }
-
-    pub fn get_product_type(&self, name: &str) -> Option<ProductType> {
-        match self.product_types.get(name) {
-            Some(pt) => Some(pt.clone()),
-            None => None,
-        }
-    }
-
     pub fn add_producer(&mut self, producer: Box<dyn Producer>) {
-        self.producers.push(producer);
+        self.producers.push(Arc::new(Mutex::new(producer)));
     }
 
-    pub fn get_producer(&self, name: &str) -> Option<&Box<dyn Producer>> {
+    pub fn get_producer(&self, id: &str) -> Option<Arc<Mutex<Box<dyn Producer>>>> {
         let mut result = None;
 
         for p in self.producers.iter() {
-            if p.product_type().name() == name {
-                result = Some(p);
+            if p.lock().unwrap().id() == id {
+                result = Some(p.clone());
                 break;
             }
         }
@@ -100,7 +89,6 @@ impl Engine {
                 config,
                 timer: Arc::new(Mutex::new(Timer::new(config.tick_timeout_ms))),
                 timer_handle: None,
-                product_types: HashMap::new(),
                 producers: Vec::new(),
                 products: HashMap::new(),
             })),
@@ -159,14 +147,6 @@ impl Engine {
         }
     }
 
-    pub fn add_product_type(&mut self, product_type: ProductType) {
-        self.inner.lock().unwrap().add_product_type(product_type)
-    }
-
-    pub fn get_product_type(&self, name: &str) -> Option<ProductType> {
-        self.inner.lock().unwrap().get_product_type(name)
-    }
-
     /// Add a producer to the engine.
     /// Once a producer has been added to the engine and the timer is in a state of `TimerState::Running`,
     /// the producer will receive calls to its `on_tick()` method for processing
@@ -174,7 +154,7 @@ impl Engine {
         self.inner.lock().unwrap().add_producer(producer);
     }
 
-    pub fn get_producer(&self, name: &str) -> Option<&Box<dyn Producer>> {
-        self.inner.lock().unwrap().get_producer(name)
+    pub fn get_producer(&self, id: &str) -> Option<Arc<Mutex<Box<dyn Producer>>>> {
+        self.inner.lock().unwrap().get_producer(id)
     }
 }
