@@ -54,7 +54,7 @@ impl EngineInner {
                     }
                 };
                 self.products.insert(product_name, pq + q);
-                println!("{:?}", self.products);
+                // println!("{:?}", self.products);
             }  
         }           
     }
@@ -74,6 +74,10 @@ impl EngineInner {
         }
 
         result
+    }
+
+    pub fn get_products(&self) -> HashMap<String, f64> {
+        self.products.clone()
     }
 }
 
@@ -156,5 +160,9 @@ impl Engine {
 
     pub fn get_producer(&self, id: &str) -> Option<Arc<Mutex<Box<dyn Producer>>>> {
         self.inner.lock().unwrap().get_producer(id)
+    }
+
+    pub fn get_products(&self) -> HashMap<String, f64> {
+        self.inner.lock().unwrap().get_products()
     }
 }

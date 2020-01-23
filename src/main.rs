@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut ui = UI::new().unwrap();
 
     loop {
-        ui.show_stuff()?;
+        ui.render(&engine)?;
         match ui.event_receiver().recv()? {
             Event::Input(event) => match event.code {
                 KeyCode::Char('q') => {
