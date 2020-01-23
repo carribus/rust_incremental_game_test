@@ -1,8 +1,10 @@
 mod continuum;
+mod ui;
 
 use std::error::Error;
 use std::io::{self, Write};
 use continuum::{ Engine, EngineConfig, ProducerEntity, ProductType };
+use ui::{UI, Event, KeyCode};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut engine = Engine::new(EngineConfig {
@@ -12,35 +14,49 @@ fn main() -> Result<(), Box<dyn Error>> {
     setup_producers(&mut engine);
     engine.start();
 
+    let mut ui = UI::new().unwrap();
+
     loop {
-        let mut buffer = String::new();
-        print!("> "); 
-        io::stdout().flush()?;
-        io::stdin().read_line(&mut buffer)?;
-        match buffer.trim() {
-            "quit" => {
-                engine.stop();
-                println!("Exiting...");
-                break Ok(())
+        ui.show_stuff()?;
+        match ui.event_receiver().recv()? {
+            Event::Input(event) => match event.code {
+                KeyCode::Char('q') => {
+                    engine.stop();
+                    println!("Exiting...");
+                    break Ok(())
+                },
+                _ => (),
             },
-            input => {
-                // check if the name of a producer was typed
-                match engine.get_producer(input) {
-                    Some(producer) => {
-                        println!("Found {} producer", input);
-                        let mut producer = producer.lock().unwrap();
-                        let q = producer.production_quantity();
-                        
-                        producer.set_production_quantity(q * 2.0);
-                        
-                        println!("gold production per tick is {}", producer.production_quantity());
-                    },
-                    None => {
-                        println!("No producer called {} found", input);
-                    }
-                }
-            },
+            _ => (),
         }
+        // let mut buffer = String::new();
+        // print!("> "); 
+        // io::stdout().flush()?;
+        // io::stdin().read_line(&mut buffer)?;
+        // match buffer.trim() {
+        //     "quit" => {
+        //         engine.stop();
+        //         println!("Exiting...");
+        //         break Ok(())
+        //     },
+        //     input => {
+        //         // check if the name of a producer was typed
+        //         match engine.get_producer(input) {
+        //             Some(producer) => {
+        //                 println!("Found {} producer", input);
+        //                 let mut producer = producer.lock().unwrap();
+        //                 let q = producer.production_quantity();
+                        
+        //                 producer.set_production_quantity(q * 2.0);
+                        
+        //                 println!("gold production per tick is {}", producer.production_quantity());
+        //             },
+        //             None => {
+        //                 println!("No producer called {} found", input);
+        //             }
+        //         }
+        //     },
+        // }
     }
 }
 
