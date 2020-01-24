@@ -81,15 +81,6 @@ impl UI {
             
             Self::render_top_bar(&mut f, engine, chunks[0]);
             Self::render_body(&mut f, engine, chunks[1]);
-
-            // Block::default()
-            //     .title(GAME_TITLE)
-            //     .borders(Borders::ALL)
-            //     .render(&mut f, chunks[0]);
-
-            // Block::default()
-            //     .borders(Borders::ALL)
-            //     .render(&mut f, chunks[1]);
         })
     }
 
@@ -102,42 +93,16 @@ impl UI {
                     .borders(Borders::ALL)
             )
             .render(f, area);
-
-        // for (idx, (k, v)) in products.iter().enumerate() {
-        //     Paragraph::new([Text::raw(format!("{}: {} | ", k, v))].iter())
-        //         .block(
-        //             Block::default()
-        //                 .borders(Borders::ALL)
-        //                 .title("Product")
-        //         )
-        //         .render(f, chunks[idx]);
-        // }
-
-        // let text_vec = products.iter().map(|(k, v)| {
-        //     Paragraph::new([Text::raw(format!("{}: {} | ", k, v))].iter())
-        //         .block(
-        //             Block::default()
-        //                 .borders(Borders::ALL)
-        //         )
-        //         .render(f, area)
-        // }).collect::<Vec<Paragraph<Text>>>();
-
-        // Paragraph::new(text_vec.iter())
-        //     .block(Block::default()
-        //         .borders(Borders::ALL)
-        //     )
-        //     .alignment(Alignment::Left)
-        //     .wrap(true)
-        //     .render(f, area);
     }
 
     fn render_body(f: &mut Frame<TerminalBackend>, engine: &Engine, area: Rect) {
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Length(25), Constraint::Min(0)].as_ref())
+            .constraints([Constraint::Length(20), Constraint::Min(0)].as_ref())
             .split(area);
 
         Self::render_products(f, engine, chunks[0]);
+        Self::render_actions(f, engine, chunks[1]);
     }
 
     fn render_products(f: &mut Frame<TerminalBackend>, engine: &Engine, area: Rect) {
@@ -146,26 +111,32 @@ impl UI {
             (k.clone(), format!("{}", v))
         }).collect::<Vec<_>>();
 
-        // TODO: You left off here
-        Table::new(
-            ["Item", "Qty"].into_iter(),
-            text_vec.iter().map(|(label, value)| {
-                Row::Data([label, value].into_iter())
-            })
-        )
-        .block(Block::default()
+        if text_vec.len() > 0 {
+            Table::new(
+                ["Item", "Qty"].into_iter(),
+                text_vec.iter().map(|(label, value)| {
+                    Row::Data(vec![label, value].into_iter())
+                })
+            )
+            .block(Block::default().title("[ Products ]").borders(Borders::ALL))
+            .header_style(Style::default().fg(Color::Cyan))
+            .widths(&[Constraint::Length(10), Constraint::Length(5)])
+            .style(Style::default().fg(Color::White))
+            .column_spacing(1)
+            .render(f, area);
+        } else {
+            Block::default()
+                .borders(Borders::ALL)
+                .title("[ Products ]")
+                .render(f, area);
+        }
+    }
+
+    fn render_actions(f: &mut Frame<TerminalBackend>, engine: &Engine, area: Rect) {
+        Block::default()
             .borders(Borders::ALL)
-            .title("Products")
-        )
-        .header_style(Style::default().fg(Color::Yellow));
-        
-        // SelectableList::default()
-        //     .block(Block::default()
-        //         .borders(Borders::ALL)
-        //         .title("Products")
-        //     )
-        //     .items(&text_vec)
-        //     .render(f, area);
+            .title("[ Actions ]")
+            .render(f, area);
     }
 }
 
