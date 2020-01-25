@@ -43,6 +43,8 @@ impl EngineInner {
         for producer in iter {
             let mut producer = producer.lock().unwrap();
             let q = producer.on_tick(elapsed);
+            
+            // if anything was produced, allocate it to the relevant production 'bucket'
             if q > 0.0 {
                 let product_name = producer.product_type().name.to_string();
                 // println!("{} {} produced...", q, product_name);
